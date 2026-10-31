@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arena 3D</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; overflow: hidden; background: #12141c; color: #fff; font-family: system-ui, "Noto Sans Thai", sans-serif; }
+  canvas { display: block; }
+  .hidden { display: none !important; }
+
+  #hud { position: fixed; top: 16px; left: 16px; right: 16px; display: flex; align-items: center; gap: 16px; pointer-events: none; }
+  .bar { flex: 1; } .bar.right { text-align: right; }
+  .bar .name { font-weight: 700; letter-spacing: .04em; margin-bottom: 4px; }
+  .track { height: 18px; background: #3a1020; border: 2px solid #fff; border-radius: 4px; overflow: hidden; }
+  .bar.right .track { transform: scaleX(-1); }
+  .fill { height: 100%; width: 100%; background: linear-gradient(90deg, #ffd166, #06d6a0); transition: width .15s; }
+  #timer { font-size: 36px; font-weight: 800; min-width: 60px; text-align: center; }
+
+  #menu { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(10,10,18,.55); }
+  .card { background: #1d2030; border: 1px solid #3a3f55; border-radius: 14px; padding: 24px 28px; width: min(520px, calc(100% - 32px)); }
+  .card h1 { margin: 0 0 16px; font-size: 32px; letter-spacing: .06em; }
+  .row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .row label { flex: 1; min-width: 140px; font-size: 14px; color: #aab; }
+  select, button { width: 100%; padding: 10px; font-size: 16px; border-radius: 8px; border: 1px solid #3a3f55; background: #12141c; color: #fff; margin-top: 4px; }
+  #startBtn { background: #ff3c6e; border: 0; font-weight: 700; cursor: pointer; }
+  #startBtn:disabled { opacity: .4; cursor: not-allowed; }
+  .keys { font-size: 13px; color: #aab; line-height: 1.7; margin-top: 14px; }
+  kbd { background: #2b3040; border-radius: 4px; padding: 1px 6px; color: #fff; }
+
+  #banner { position: fixed; top: 38%; left: 0; right: 0; text-align: center; font-size: 72px; font-weight: 900; letter-spacing: .08em;
+            text-shadow: 0 4px 0 #ff3c6e; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  #banner small { display: block; font-size: 20px; letter-spacing: 0; text-shadow: none; margin-top: 8px; }
+
+  #checker { position: fixed; left: 16px; bottom: 16px; max-width: min(640px, calc(100% - 32px)); font-size: 13px; z-index: 5; }
+  #checker button { width: auto; margin: 0; padding: 8px 12px; cursor: pointer; font-size: 13px; }
+  #checker.good button { border-color: #06d6a0; } #checker.warn button { border-color: #ffd166; } #checker.bad button { border-color: #ff3c6e; background: #3a1020; }
+  #checker ul { display: none; list-style: none; margin: 6px 0 0; padding: 10px; background: #1d2030ee; border-radius: 8px; max-height: 40vh; overflow: auto; }
+  #checker.open ul { display: block; }
+  #checker li { padding: 6px 0; border-bottom: 1px solid #2b3040; }
+  #checker li.error b { color: #ff3c6e; } #checker li.warn b { color: #ffd166; }
+  #checker .fix { color: #9fe8c9; margin-top: 2px; }
+</style>
+</head>
+<body>
+  <div id="hud" class="hidden">
+    <div class="bar"><div class="name" id="n1">P1</div><div class="track"><div class="fill" id="hp1"></div></div></div>
+    <div id="timer">99</div>
+    <div class="bar right"><div class="name" id="n2">P2</div><div class="track"><div class="fill" id="hp2"></div></div></div>
+  </div>
+
+  <div id="menu">
+    <div class="card">
+      <h1>ARENA 3D</h1>
+      <div class="row">
+        <label>ผู้เล่น 1<select id="p1"></select></label>
+        <label>ผู้เล่น 2<select id="p2"></select></label>
+      </div>
+      <div class="row"><label style="display:flex;align-items:center;gap:8px;color:#fff"><input type="checkbox" id="cpu" checked> ให้คอมเล่นผู้เล่น 2</label></div>
+      <button id="startBtn">เริ่มสู้</button>
+      <div class="keys">
+        P1: เดิน <kbd>A</kbd><kbd>D</kbd> กระโดด <kbd>W</kbd> ย่อ <kbd>S</kbd> · ต่อย <kbd>F</kbd> เตะ <kbd>G</kbd> พิเศษ <kbd>H</kbd><br>
+        P2: ลูกศร · ต่อย <kbd>,</kbd> เตะ <kbd>.</kbd> พิเศษ <kbd>/</kbd><br>
+        กดถอยหลัง = กันการโจมตี · ท่าคอมโบ เช่น ลง→หน้า→พิเศษ ดูใน characters.js
+      </div>
+    </div>
+  </div>
+
+  <div id="banner"></div>
+  <div id="checker"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="validator.js"></script>
+  <script>
+    window.__charErr = null;
+    window.addEventListener('error', function (e) {
+      if (e.filename && e.filename.indexOf('characters.js') !== -1) window.__charErr = { msg: e.message, line: e.lineno };
+    });
+  </script>
+  <script src="characters.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

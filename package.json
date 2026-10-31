@@ -1,0 +1,9 @@
+{
+  "name": "fight-arena-3d",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "check": "node check-bot.js",
+    "watch": "node check-bot.js --watch"
+  }
+}
