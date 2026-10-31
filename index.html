@@ -18,16 +18,51 @@
   .fill { height: 100%; width: 100%; background: linear-gradient(90deg, #ffd166, #06d6a0); transition: width .15s; }
   #timer { font-size: 36px; font-weight: 800; min-width: 60px; text-align: center; }
 
-  #menu { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(10,10,18,.55); }
-  .card { background: #1d2030; border: 1px solid #3a3f55; border-radius: 14px; padding: 24px 28px; width: min(520px, calc(100% - 32px)); }
-  .card h1 { margin: 0 0 16px; font-size: 32px; letter-spacing: .06em; }
-  .row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
-  .row label { flex: 1; min-width: 140px; font-size: 14px; color: #aab; }
-  select, button { width: 100%; padding: 10px; font-size: 16px; border-radius: 8px; border: 1px solid #3a3f55; background: #12141c; color: #fff; margin-top: 4px; }
-  #startBtn { background: #ff3c6e; border: 0; font-weight: 700; cursor: pointer; }
-  #startBtn:disabled { opacity: .4; cursor: not-allowed; }
-  .keys { font-size: 13px; color: #aab; line-height: 1.7; margin-top: 14px; }
+  button { font: inherit; color: #fff; background: #12141c; border: 1px solid #3a3f55; border-radius: 8px; padding: 10px; }
+  #select { position: fixed; inset: 0; pointer-events: none; }
+  #select > * { pointer-events: auto; }
+  .sel-title { position: absolute; top: 14px; left: 0; right: 0; text-align: center; font-size: 30px; font-weight: 900; letter-spacing: .08em; text-shadow: 0 3px 0 #ff3c6e; pointer-events: none; }
+  .sel-mode { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+  .sel-mode button { width: auto; margin: 0; padding: 6px 14px; font-size: 14px; cursor: pointer; background: #1d2030cc; }
+  .sel-mode button.on { background: #ff3c6e; border-color: #ff3c6e; font-weight: 700; }
+  .side { position: absolute; top: 108px; left: 16px; width: 270px; max-height: calc(100% - 290px); overflow: auto; background: #1d2030e6; border: 1px solid #3a3f55; border-top: 4px solid var(--c, #888); border-radius: 12px; padding: 14px 16px; }
+  .side.right { left: auto; right: 16px; }
+  .side .tag { font-size: 12px; font-weight: 800; color: var(--c); letter-spacing: .1em; }
+  .side h2 { margin: 2px 0 4px; font-size: 26px; }
+  .side p { margin: 0 0 10px; color: #aab; font-size: 13px; }
+  .stat { display: grid; grid-template-columns: 70px 1fr 34px; align-items: center; gap: 8px; font-size: 12px; color: #ccd; margin: 4px 0; }
+  .stat b { text-align: right; color: #fff; }
+  .sb { height: 8px; background: #2b3040; border-radius: 4px; overflow: hidden; }
+  .sb div { height: 100%; background: var(--c); }
+  .mv { list-style: none; padding: 0; margin: 10px 0 0; font-size: 13px; }
+  .mv li { display: grid; grid-template-columns: 1fr auto 34px; gap: 8px; align-items: center; padding: 4px 0; border-top: 1px solid #2b3040; }
+  .mv li.hd { color: #889; font-size: 11px; border: 0; }
+  .mv em { font-style: normal; text-align: right; color: #ffd166; }
+  .mv kbd { margin-left: 2px; }
+  .st { margin-top: 10px; font-weight: 700; color: #ffd166; }
+  .st.ok { color: #06d6a0; font-size: 18px; } .st.dim { color: #667; }
+  .grid { position: absolute; bottom: 64px; left: 50%; transform: translateX(-50%); display: grid; gap: 10px; width: min(640px, calc(100% - 32px)); }
+  .ch { position: relative; margin: 0; padding: 10px 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; background: #1d2030e6; border: 2px solid #3a3f55; border-radius: 12px; transition: transform .1s; }
+  .ch:hover { transform: translateY(-2px); }
+  .ch .face { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-size: 26px; font-weight: 900; background: var(--c); box-shadow: inset 0 -6px 0 rgba(0,0,0,.25); }
+  .ch .nm { font-size: 14px; font-weight: 700; }
+  .ch i { position: absolute; top: -9px; font-style: normal; font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 6px; display: none; }
+  .ch .b1 { left: 6px; background: #ff3c6e; } .ch .b2 { right: 6px; background: #3a86ff; }
+  .ch.p1 { border-color: #ff3c6e; } .ch.p1 .b1 { display: block; }
+  .ch.p2 { border-color: #3a86ff; } .ch.p2 .b2 { display: block; }
+  .ch.p1.p2 { border-color: #c77dff; }
+  .ch.lk1, .ch.lk2 { box-shadow: 0 0 0 3px #06d6a0; }
+  .sel-help { position: absolute; bottom: 18px; left: 0; right: 0; text-align: center; font-size: 13px; color: #aab; padding: 0 16px; }
+  .sel-help .ready { font-size: 24px; color: #06d6a0; letter-spacing: .1em; }
   kbd { background: #2b3040; border-radius: 4px; padding: 1px 6px; color: #fff; }
+  @media (max-width: 760px) {
+    .sel-title { font-size: 22px; }
+    .side { top: 100px; width: calc(50% - 22px); max-height: 34vh; padding: 10px; }
+    .side h2 { font-size: 18px; } .side p, .mv { display: none; }
+    .stat { grid-template-columns: 52px 1fr; } .stat b { display: none; }
+    .ch .face { width: 40px; height: 40px; font-size: 20px; }
+    .sel-help { font-size: 0; } .sel-help .ready { font-size: 20px; }
+  }
 
   #banner { position: fixed; top: 38%; left: 0; right: 0; text-align: center; font-size: 72px; font-weight: 900; letter-spacing: .08em;
             text-shadow: 0 4px 0 #ff3c6e; opacity: 0; transition: opacity .25s; pointer-events: none; }
@@ -50,21 +85,13 @@
     <div class="bar right"><div class="name" id="n2">P2</div><div class="track"><div class="fill" id="hp2"></div></div></div>
   </div>
 
-  <div id="menu">
-    <div class="card">
-      <h1>ARENA 3D</h1>
-      <div class="row">
-        <label>ผู้เล่น 1<select id="p1"></select></label>
-        <label>ผู้เล่น 2<select id="p2"></select></label>
-      </div>
-      <div class="row"><label style="display:flex;align-items:center;gap:8px;color:#fff"><input type="checkbox" id="cpu" checked> ให้คอมเล่นผู้เล่น 2</label></div>
-      <button id="startBtn">เริ่มสู้</button>
-      <div class="keys">
-        P1: เดิน <kbd>A</kbd><kbd>D</kbd> กระโดด <kbd>W</kbd> ย่อ <kbd>S</kbd> · ต่อย <kbd>F</kbd> เตะ <kbd>G</kbd> พิเศษ <kbd>H</kbd><br>
-        P2: ลูกศร · ต่อย <kbd>,</kbd> เตะ <kbd>.</kbd> พิเศษ <kbd>/</kbd><br>
-        กดถอยหลัง = กันการโจมตี · ท่าคอมโบ เช่น ลง→หน้า→พิเศษ ดูใน characters.js
-      </div>
-    </div>
+  <div id="select">
+    <div class="sel-title">เลือกตัวละคร</div>
+    <div class="sel-mode"><button id="modeCpu" class="on">1P vs CPU</button><button id="modeVs">1P vs 2P</button></div>
+    <div class="side" id="side1"></div>
+    <div class="side right" id="side2"></div>
+    <div class="grid" id="grid"></div>
+    <div class="sel-help" id="selHelp"></div>
   </div>
 
   <div id="banner"></div>

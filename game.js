@@ -32,7 +32,7 @@
       msg: e ? `อ่านไฟล์ไม่ได้ (บรรทัด ${e.line}): ${e.msg}` : 'ไม่พบ window.CHARACTERS',
       fix: 'มักเกิดจากลืม comma, วงเล็บ { } [ ] ไม่ครบ หรือเครื่องหมายคำพูดไม่ปิด — รัน  node check-bot.js  เพื่อดูตำแหน่ง'
     }]);
-    $('startBtn').disabled = true;
+    $('select').classList.add('hidden');
     return;
   }
   const report = CheckBot.validate(window.CHARACTERS);
@@ -264,13 +264,7 @@
   }
 
   // ---------------- Game flow ----------------
-  const game = { state: 'menu', fighters: [], timer: ROUND_TIME, cpu: true, picks: [0, 1] };
-
-  const sel1 = $('p1'), sel2 = $('p2');
-  ROSTER.forEach((c, i) => { sel1.add(new Option(c.name, i)); sel2.add(new Option(c.name, i)); });
-  if (ROSTER.length > 1) sel2.value = 1;
-  if (ROSTER.length < 1) $('startBtn').disabled = true;
-  $('startBtn').onclick = () => { game.picks = [+sel1.value, +sel2.value]; game.cpu = $('cpu').checked; startRound(); };
+  const game = { state: 'select', fighters: [], timer: ROUND_TIME, cpu: true, picks: [0, 1] };
 
   function banner(text, ms) {
     const b = $('banner'); b.innerHTML = text; b.style.opacity = 1;
@@ -278,13 +272,14 @@
   }
 
   function startRound() {
+    clearPreviews();
     game.fighters.forEach(f => f.dispose());
     projectiles.forEach(p => scene.remove(p.mesh)); projectiles = [];
     const [a, b] = game.picks;
     const f1 = new Fighter(ROSTER[a], 0), f2 = new Fighter(ROSTER[b], 1);
     f1.opp = f2; f2.opp = f1; f2.cpuHold = 0;
     game.fighters = [f1, f2]; game.timer = ROUND_TIME; game.state = 'fight';
-    $('menu').classList.add('hidden'); $('hud').classList.remove('hidden');
+    $('select').classList.add('hidden'); $('hud').classList.remove('hidden');
     $('n1').textContent = f1.def.name; $('n2').textContent = f2.def.name + (game.cpu ? ' (CPU)' : '');
     banner('FIGHT!', 900);
   }
@@ -297,7 +292,7 @@
   }
 
   function step() {
-    if (game.state === 'menu') return;
+    if (game.state === 'select') return;
     const [f1, f2] = game.fighters;
     if (game.cpu) cpuThink(f2);
     f1.update(); f2.update(); updateFx();
@@ -313,6 +308,138 @@
     }
   }
 
+  // ---------------- หน้าเลือกตัวละคร ----------------
+  const N = ROSTER.length;                    // ช่องสุดท้าย (index N) = สุ่ม
+  const COLS = Math.min(N + 1, 6);
+  const sel = { cur: [0, Math.min(1, N - 1)], locked: [false, false], previews: [null, null], startT: null };
+  const STAT_MAX = { hp: 150, speed: 8, jump: 12, defense: 1.5 };
+  const STAT_TH = { hp: 'พลังชีวิต', speed: 'ความเร็ว', jump: 'กระโดด', defense: 'ป้องกัน' };
+  const TOKEN_TH = { U: '↑', D: '↓', F: '→', B: '←', P: 'ต่อย', K: 'เตะ', S: 'พิเศษ' };
+
+  function buildGrid() {
+    const grid = $('grid');
+    grid.style.gridTemplateColumns = `repeat(${COLS}, 1fr)`;
+    grid.innerHTML = ROSTER.map((c, i) =>
+      `<button class="ch" data-i="${i}" style="--c:${c.color}"><span class="face">${esc(c.name[0])}</span><span class="nm">${esc(c.name)}</span><i class="b1">1P</i><i class="b2">2P</i></button>`
+    ).join('') + `<button class="ch rnd" data-i="${N}" style="--c:#666"><span class="face">?</span><span class="nm">สุ่ม</span><i class="b1">1P</i><i class="b2">2P</i></button>`;
+    grid.querySelectorAll('.ch').forEach(btn => {
+      btn.onclick = () => {
+        const slot = activeSlotForMouse(); if (slot < 0) return;
+        sel.cur[slot] = +btn.dataset.i; lock(slot);
+      };
+      btn.onmouseenter = () => {
+        const slot = activeSlotForMouse(); if (slot < 0 || sel.cur[slot] === +btn.dataset.i) return;
+        sel.cur[slot] = +btn.dataset.i; refresh(slot);
+      };
+    });
+  }
+
+  function activeSlotForMouse() { return !sel.locked[0] ? 0 : !sel.locked[1] ? 1 : -1; }
+  // ปุ่มของผู้เล่น kp (0/1) คุมช่องไหน — โหมด CPU ให้ P1 เลือกทั้งตัวเองและคู่ต่อสู้
+  function slotForKeys(kp) {
+    if (game.cpu) return kp === 0 ? (sel.locked[0] ? 1 : 0) : -1;
+    return kp;
+  }
+
+  function sidePanel(slot) {
+    const i = sel.cur[slot], el = $(slot ? 'side2' : 'side1');
+    const tag = slot === 0 ? '1P' : (game.cpu ? 'CPU' : '2P');
+    const status = sel.locked[slot] ? '<div class="st ok">พร้อม!</div>'
+      : (activeSlotForMouse() === slot || !game.cpu) ? '<div class="st">กำลังเลือก…</div>' : '<div class="st dim">รอ</div>';
+    if (i === N) { el.innerHTML = `<div class="tag">${tag}</div><h2>สุ่มตัวละคร</h2><p>ระบบจะสุ่มให้ตอนเริ่มสู้</p>${status}`; el.style.setProperty('--c', '#888'); return; }
+    const c = ROSTER[i];
+    el.style.setProperty('--c', c.color);
+    const bars = Object.keys(STAT_MAX).map(k =>
+      `<div class="stat"><span>${STAT_TH[k]}</span><div class="sb"><div style="width:${Math.min(100, c.stats[k] / STAT_MAX[k] * 100)}%"></div></div><b>${c.stats[k]}</b></div>`).join('');
+    const moves = Object.keys(c.moves).map(n => {
+      const m = c.moves[n];
+      const keys = m.input.trim().split(/\s+/).map(t => `<kbd>${TOKEN_TH[t] || t}</kbd>`).join('');
+      return `<li><span>${esc(n)}</span><span>${keys}</span><em>${m.damage}</em></li>`;
+    }).join('');
+    el.innerHTML = `<div class="tag">${tag}</div><h2>${esc(c.name)}</h2>${c.description ? `<p>${esc(c.description)}</p>` : ''}${bars}<ul class="mv"><li class="hd"><span>ท่า</span><span>ปุ่ม</span><em>ดาเมจ</em></li>${moves}</ul>${status}`;
+  }
+
+  function refresh(changedSlot) {
+    $('grid').querySelectorAll('.ch').forEach(btn => {
+      const i = +btn.dataset.i;
+      btn.classList.toggle('p1', sel.cur[0] === i);
+      btn.classList.toggle('p2', sel.cur[1] === i && (sel.locked[0] || !game.cpu));
+      btn.classList.toggle('lk1', sel.locked[0] && sel.cur[0] === i);
+      btn.classList.toggle('lk2', sel.locked[1] && sel.cur[1] === i);
+    });
+    $('grid').querySelectorAll('.b2').forEach(b => b.textContent = game.cpu ? 'CPU' : '2P');
+    sidePanel(0); sidePanel(1);
+    $('modeCpu').classList.toggle('on', game.cpu); $('modeVs').classList.toggle('on', !game.cpu);
+    $('selHelp').innerHTML = game.cpu
+      ? 'เลือกด้วย <kbd>A</kbd><kbd>D</kbd><kbd>W</kbd><kbd>S</kbd> หรือเมาส์ · ยืนยัน <kbd>F</kbd> / คลิก · ยกเลิก <kbd>G</kbd> — เลือกตัวเองก่อน แล้วเลือกคู่ต่อสู้'
+      : '1P: <kbd>A</kbd><kbd>D</kbd><kbd>W</kbd><kbd>S</kbd> ยืนยัน <kbd>F</kbd> ยกเลิก <kbd>G</kbd> · 2P: ลูกศร ยืนยัน <kbd>,</kbd> ยกเลิก <kbd>.</kbd>';
+    if (changedSlot !== undefined) setPreview(changedSlot);
+  }
+
+  function setPreview(slot) {
+    if (sel.previews[slot]) sel.previews[slot].dispose();
+    sel.previews[slot] = null;
+    const i = sel.cur[slot];
+    if (i === N || (slot === 1 && game.cpu && !sel.locked[0])) return;
+    const f = new Fighter(ROSTER[i], slot);
+    f.x = slot ? 2.2 : -2.2; f.facing = slot ? -1 : 1;
+    sel.previews[slot] = f;
+  }
+  function clearPreviews() { sel.previews.forEach(f => f && f.dispose()); sel.previews = [null, null]; }
+
+  function lock(slot) {
+    sel.locked[slot] = true;
+    if (sel.cur[slot] === N) { /* สุ่มตอนเริ่ม */ }
+    refresh(slot);
+    if (game.cpu && slot === 0) refresh(1);
+    const f = sel.previews[slot];
+    if (f && f.moveList.length) { f.move = f.moveList[Math.floor(Math.random() * f.moveList.length)]; f.moveFrame = 0; }
+    if (sel.locked[0] && sel.locked[1]) {
+      $('selHelp').innerHTML = '<b class="ready">READY!</b>';
+      sel.startT = setTimeout(() => {
+        game.picks = sel.cur.map(i => i === N ? Math.floor(Math.random() * N) : i);
+        startRound();
+      }, 900);
+    }
+  }
+  function unlock(slot) {
+    clearTimeout(sel.startT);
+    sel.locked[slot] = false; refresh(slot);
+    if (game.cpu && slot === 0) refresh(1);
+  }
+
+  function selectKey(kp, k) {
+    const slot = slotForKeys(kp);
+    if (k === 'K') {                       // ยกเลิก
+      if (game.cpu) { if (sel.locked[1]) unlock(1); else if (sel.locked[0]) unlock(0); }
+      else if (sel.locked[kp]) unlock(kp);
+      return;
+    }
+    if (slot < 0 || sel.locked[slot]) return;
+    if (k === 'P' || k === 'S') { lock(slot); return; }
+    const total = N + 1, step = { L: -1, R: 1, U: -COLS, D: COLS }[k];
+    if (!step) return;
+    let n = sel.cur[slot] + step;
+    if (k === 'L' || k === 'R') n = (n + total) % total;
+    else if (n < 0 || n >= total) return;
+    sel.cur[slot] = n; refresh(slot);
+  }
+
+  function openSelect() {
+    game.state = 'select';
+    game.fighters.forEach(f => f.dispose()); game.fighters = [];
+    projectiles.forEach(p => scene.remove(p.mesh)); projectiles = [];
+    clearTimeout(sel.startT);
+    sel.locked = [false, false];
+    $('select').classList.remove('hidden'); $('hud').classList.add('hidden'); $('banner').style.opacity = 0;
+    refresh(0); refresh(1);
+  }
+
+  $('modeCpu').onclick = () => { game.cpu = true; openSelect(); };
+  $('modeVs').onclick = () => { game.cpu = false; openSelect(); };
+  if (N < 1) { $('selHelp').textContent = 'ไม่มีตัวละครที่ผ่าน CheckBot — ดูรายการ error มุมซ้ายล่าง'; }
+  else { buildGrid(); openSelect(); }
+
   // ---------------- Input ----------------
   const KEYMAP = {
     KeyA: [0, 'L'], KeyD: [0, 'R'], KeyW: [0, 'U'], KeyS: [0, 'D'], KeyF: [0, 'P'], KeyG: [0, 'K'], KeyH: [0, 'S'],
@@ -320,16 +447,15 @@
   };
   addEventListener('keydown', e => {
     if (e.code === 'Enter' && game.state === 'end') return startRound();
-    if (e.code === 'Escape' && game.state !== 'menu') {
-      game.state = 'menu'; $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('banner').style.opacity = 0; return;
-    }
-    const k = KEYMAP[e.code]; if (!k || game.state === 'menu') return;
+    if (e.code === 'Escape' && game.state !== 'select') return openSelect();
+    const k = KEYMAP[e.code]; if (!k) return;
     e.preventDefault(); if (e.repeat) return;
+    if (game.state === 'select') { if (N > 0) selectKey(k[0], k[1]); return; }
     if (k[0] === 1 && game.cpu) return;
     game.fighters[k[0]].press(k[1]);
   });
   addEventListener('keyup', e => {
-    const k = KEYMAP[e.code]; if (!k || game.state === 'menu') return;
+    const k = KEYMAP[e.code]; if (!k || game.state === 'select') return;
     if (k[0] === 1 && game.cpu) return;
     game.fighters[k[0]].release(k[1]);
   });
@@ -341,10 +467,17 @@
   let last = performance.now(), acc = 0;
   function frame(now) {
     acc += Math.min(0.1, (now - last) / 1000); last = now;
-    while (acc >= DT) { step(); acc -= DT; }
+    while (acc >= DT) {
+      step(); acc -= DT;
+      if (game.state === 'select') sel.previews.forEach(f => {
+        if (f && f.move && ++f.moveFrame >= f.move.m.startup + f.move.m.active + f.move.m.recovery) f.move = null;
+      });
+    }
     const t = now / 1000;
-    if (game.state === 'menu' || !game.fighters.length) {
-      camera.position.set(Math.sin(t * 0.2) * 11, 4, Math.cos(t * 0.2) * 11); camera.lookAt(0, 1, 0);
+    if (game.state === 'select') {
+      sel.previews.forEach(f => f && f.pose(t));
+      const wide = innerWidth / innerHeight < 1 ? 13 : 8.5;
+      camera.position.set(Math.sin(t * 0.3) * 0.6, 2.6, wide); camera.lookAt(0, 1.5, 0);
     } else {
       const [f1, f2] = game.fighters;
       f1.pose(t); f2.pose(t);
