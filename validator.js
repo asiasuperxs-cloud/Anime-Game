@@ -8,18 +8,22 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  const BUTTONS = ['P', 'K', 'S'];          // ต่อย / เตะ / ท่าพิเศษ
+  const BUTTONS = ['P', 'K', 'S', 'E', 'R']; // ต่อย / เตะ / สกิล1 / สกิล2 / อัลติ
   const DIRS = ['U', 'D', 'F', 'B'];        // ขึ้น / ลง / หน้า / หลัง
   const ARROWS = { '→': 'F', '←': 'B', '↓': 'D', '↑': 'U' };
 
   const CHAR_REQUIRED = { id: 'string', name: 'string', color: 'string', stats: 'object', moves: 'object' };
-  const CHAR_OPTIONAL = { description: 'string' };
+  const CHAR_OPTIONAL = { description: 'string', role: 'string', price: 'number', look: 'object' };
+  const LOOK_COLORS = ['skin', 'hair', 'eyes', 'top', 'bottom', 'boots', 'accent', 'cape', 'scarf'];
+  const LOOK_LISTS = { hairStyle: ['short', 'spiky', 'long', 'topknot', 'bald'], weapon: ['none', 'dagger2', 'sword', 'gauntlet'], build: ['slim', 'normal', 'heavy'] };
   const STAT_RANGES = { hp: [1, 1000], speed: [0.5, 15], jump: [3, 20], defense: [0.2, 3] };
 
   const MOVE_REQUIRED = { input: 'string', damage: 'number', range: 'number', startup: 'number', active: 'number', recovery: 'number' };
-  const MOVE_OPTIONAL = { anim: 'string', knockback: 'number', projectile: 'boolean', projectileSpeed: 'number', description: 'string' };
-  const MOVE_RANGES = { damage: [0, 50], range: [0, 4], startup: [1, 60], active: [1, 30], recovery: [0, 90], knockback: [0, 3], projectileSpeed: [2, 30] };
-  const ANIMS = ['punch', 'kick', 'uppercut', 'special'];
+  const MOVE_OPTIONAL = { anim: 'string', type: 'string', vfx: 'string', knockback: 'number', projectile: 'boolean', projectileSpeed: 'number', hits: 'number', reach: 'number', ultimate: 'boolean', description: 'string' };
+  const TYPES = ['melee', 'projectile', 'grapple', 'spin'];
+  const VFX = ['none', 'arc', 'x', 'ring'];
+  const MOVE_RANGES = { damage: [0, 50], range: [0, 4], startup: [1, 60], active: [1, 90], recovery: [0, 90], knockback: [0, 3], projectileSpeed: [2, 30], hits: [1, 10], reach: [2, 14] };
+  const ANIMS = ['punch', 'kick', 'uppercut', 'special', 'grapple', 'xslash', 'spin'];
 
   const EXAMPLES = {
     id: 'id: "blaze"', name: 'name: "Blaze"', color: 'color: "#e4572e"',
@@ -85,6 +89,22 @@
       if (typeof c.color === 'string' && !/^#[0-9a-fA-F]{6}$/.test(c.color))
         add('error', who, `color "${c.color}" ไม่ใช่รหัสสีที่ถูกต้อง`, 'ใช้รูปแบบ #RRGGBB เช่น  color: "#3a86ff"');
 
+      if (typeof c.price === 'number' && (c.price < 0 || c.price > 100000)) add('error', who, `price = ${c.price} ต้องอยู่ระหว่าง 0 – 100000`);
+      if (typeOf(c.look) === 'object') {
+        const where = `${who} › look`;
+        Object.keys(c.look).forEach(k => {
+          const v = c.look[k];
+          if (LOOK_COLORS.includes(k)) {
+            if (v !== null && !(typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v))) add('error', where, `${k} "${v}" ไม่ใช่รหัสสี #RRGGBB`, `เช่น  ${k}: "#2a1d16"  (หรือ null = ไม่มี)`);
+          } else if (LOOK_LISTS[k]) {
+            if (!LOOK_LISTS[k].includes(v)) { const s = typeof v === 'string' ? suggest(v, LOOK_LISTS[k]) : null; add('error', where, `${k} "${v}" ไม่มีในเกม${s ? ` — หมายถึง "${s}" ใช่ไหม?` : ''}`, `ใช้ได้: ${LOOK_LISTS[k].join(', ')}`); }
+          } else {
+            const s = suggest(k, LOOK_COLORS.concat(Object.keys(LOOK_LISTS)));
+            add('warn', where, `ไม่รู้จัก field "${k}"${s ? ` — พิมพ์ผิดจาก "${s}" หรือเปล่า?` : ''}`);
+          }
+        });
+      }
+
       // ---- stats ----
       if (typeOf(c.stats) === 'object') {
         const req = {}; Object.keys(STAT_RANGES).forEach(k => req[k] = 'number');
@@ -115,8 +135,14 @@
             const s = suggest(m.anim, ANIMS);
             add('error', where, `anim "${m.anim}" ไม่มีในเกม${s ? ` — หมายถึง "${s}" ใช่ไหม?` : ''}`, `ใช้ได้: ${ANIMS.join(', ')}`);
           }
-          if (m.projectile === true) {
-            if (typeof m.projectileSpeed !== 'number') add('error', where, 'เป็นท่ายิง (projectile: true) แต่ขาด projectileSpeed', 'เพิ่ม  projectileSpeed: 9');
+          if (typeof m.type === 'string' && !TYPES.includes(m.type)) { const s = suggest(m.type, TYPES); add('error', where, `type "${m.type}" ไม่มีในเกม${s ? ` — หมายถึง "${s}" ใช่ไหม?` : ''}`, `ใช้ได้: ${TYPES.join(', ')}`); }
+          if (typeof m.vfx === 'string' && !VFX.includes(m.vfx)) { const s = suggest(m.vfx, VFX); add('error', where, `vfx "${m.vfx}" ไม่มีในเกม${s ? ` — หมายถึง "${s}" ใช่ไหม?` : ''}`, `ใช้ได้: ${VFX.join(', ')}`); }
+          const isProj = m.projectile === true || m.type === 'projectile';
+          if (m.type === 'grapple' && typeof m.reach !== 'number') add('error', where, 'ท่าสลิง (type: "grapple") ต้องมี reach = ระยะยิงสลิง', 'เพิ่ม  reach: 10');
+          if (m.type === 'spin' && typeof m.hits !== 'number') add('warn', where, 'ท่าหมุน (type: "spin") ไม่มี hits — จะตีแค่ 1 ครั้ง', 'เพิ่ม  hits: 5');
+          if (m.ultimate === true && typeof m.input === 'string' && m.input.trim().split(/\s+/).pop() !== 'R') add('warn', where, 'ท่าอัลติควรกดด้วยปุ่ม R (อัลติ)', 'ตั้ง  input: "R"');
+          if (isProj) {
+            if (typeof m.projectileSpeed !== 'number') add('error', where, 'เป็นท่ายิง แต่ขาด projectileSpeed', 'เพิ่ม  projectileSpeed: 9');
           } else {
             if (m.projectileSpeed !== undefined) add('warn', where, 'มี projectileSpeed แต่ไม่ได้ตั้ง projectile: true — ค่านี้จะไม่ถูกใช้');
             if (typeof m.range === 'number' && m.range <= 0) add('error', where, 'range เป็น 0 — ท่าประชิดตัวจะตีไม่โดนใครเลย', 'ตั้ง range ประมาณ 1.2 – 2.0');
@@ -179,7 +205,7 @@
       });
       if (!ok) return null;
       const last = tokens[tokens.length - 1];
-      if (!BUTTONS.includes(last)) { add('error', where, `input "${input}" ต้องจบด้วยปุ่มโจมตี P / K / S`, `เช่น  "${tokens.join(' ')} P"`); return null; }
+      if (!BUTTONS.includes(last)) { add('error', where, `input "${input}" ต้องจบด้วยปุ่มโจมตี ${BUTTONS.join(' / ')}`, `เช่น  "${tokens.join(' ')} P"`); return null; }
       if (tokens.slice(0, -1).some(t => BUTTONS.includes(t))) { add('error', where, `input "${input}" มีปุ่มโจมตีอยู่กลางคำสั่ง — ปุ่มโจมตีต้องอยู่ท้ายสุดและมีแค่ปุ่มเดียว`); return null; }
       if (tokens.length > 5) add('warn', where, `คำสั่งยาว ${tokens.length} ปุ่ม — กดยากมาก (เกมรับคำสั่งภายใน 0.7 วินาที)`);
       return tokens.join(' ');
@@ -195,5 +221,5 @@
     }
   }
 
-  return { validate, BUTTONS, DIRS, ANIMS };
+  return { validate, BUTTONS, DIRS, ANIMS, TYPES, VFX };
 });

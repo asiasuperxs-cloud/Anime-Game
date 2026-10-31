@@ -52,6 +52,21 @@
   .ch.p2 { border-color: #3a86ff; } .ch.p2 .b2 { display: block; }
   .ch.p1.p2 { border-color: #c77dff; }
   .ch.lk1, .ch.lk2 { box-shadow: 0 0 0 3px #06d6a0; }
+  .meter { height: 6px; margin-top: 4px; background: #222638; border-radius: 3px; overflow: hidden; }
+  .bar.right .meter { transform: scaleX(-1); }
+  .meter div { height: 100%; width: 0; background: #7bdcff; transition: width .1s; }
+  .meter div.full { background: linear-gradient(90deg, #ff3c6e, #ffd166); box-shadow: 0 0 10px #ff3c6e; }
+  .gems { position: absolute; top: 18px; right: 16px; font-size: 20px; font-weight: 800; background: #1d2030e6; border: 1px solid #3a3f55; border-radius: 10px; padding: 6px 12px; }
+  .ch .lock { display: none; font-size: 11px; color: #ffd166; }
+  .ch.locked .face { filter: grayscale(.8) brightness(.6); }
+  .ch.locked .lock { display: block; }
+  .mv li.ult span:first-child { color: #ff6b8b; font-weight: 700; }
+  .st.lk { color: #ffd166; font-size: 14px; }
+  #shop { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(5,6,12,.6); z-index: 6; }
+  .shop-card { background: #1d2030; border: 1px solid #3a3f55; border-radius: 14px; padding: 20px 24px; width: min(360px, calc(100% - 32px)); text-align: center; }
+  .shop-card h3 { margin: 0 0 8px; font-size: 22px; } .shop-card p { margin: 6px 0; color: #ccd; } .shop-card .warn { color: #ff8fa3; font-size: 13px; }
+  .shop-btns { display: flex; gap: 8px; margin-top: 14px; } .shop-btns button { flex: 1; cursor: pointer; }
+  #shopYes { background: #ff3c6e; border: 0; font-weight: 700; } #shopYes:disabled { opacity: .35; cursor: not-allowed; }
   .sel-help { position: absolute; bottom: 18px; left: 0; right: 0; text-align: center; font-size: 13px; color: #aab; padding: 0 16px; }
   .sel-help .ready { font-size: 24px; color: #06d6a0; letter-spacing: .1em; }
   kbd { background: #2b3040; border-radius: 4px; padding: 1px 6px; color: #fff; }
@@ -80,9 +95,9 @@
 </head>
 <body>
   <div id="hud" class="hidden">
-    <div class="bar"><div class="name" id="n1">P1</div><div class="track"><div class="fill" id="hp1"></div></div></div>
+    <div class="bar"><div class="name" id="n1">P1</div><div class="track"><div class="fill" id="hp1"></div></div><div class="meter"><div id="mt1"></div></div></div>
     <div id="timer">99</div>
-    <div class="bar right"><div class="name" id="n2">P2</div><div class="track"><div class="fill" id="hp2"></div></div></div>
+    <div class="bar right"><div class="name" id="n2">P2</div><div class="track"><div class="fill" id="hp2"></div></div><div class="meter"><div id="mt2"></div></div></div>
   </div>
 
   <div id="select">
@@ -92,6 +107,8 @@
     <div class="side right" id="side2"></div>
     <div class="grid" id="grid"></div>
     <div class="sel-help" id="selHelp"></div>
+    <div class="gems" id="gems">💎 0</div>
+    <div id="shop" class="hidden"><div class="shop-card"><div id="shopBody"></div><div class="shop-btns"><button id="shopYes">แลกเลย (F)</button><button id="shopNo">ยกเลิก (G)</button></div></div></div>
   </div>
 
   <div id="banner"></div>
@@ -99,6 +116,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="validator.js"></script>
+  <script src="models.js"></script>
   <script>
     window.__charErr = null;
     window.addEventListener('error', function (e) {
